@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+
+# Single-page app: every path loads index.html and the app routes in the browser
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

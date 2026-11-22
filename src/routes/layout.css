@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton-svelte';
+@import '@skeletonlabs/skeleton/themes/cerberus';
+
+/* The board (Lichess's chessground): layout, wood colors and cburnett pieces, all open source */
+@import 'chessground/assets/chessground.base.css';
+@import 'chessground/assets/chessground.brown.css';
+@import 'chessground/assets/chessground.cburnett.css';
+
+/* Light or dark follows the device setting (Skeleton's default) */
+
+body {
+	/* Long usernames and opening names wrap instead of widening the page on phones */
+	overflow-wrap: anywhere;
+}
+
+html,
+body {
+	overflow-x: clip;
+}
+
+/* Board coordinates: readable on both square colors */
+cg-container coords {
+	font-weight: 600;
+}
+
+/* Secondary text: dates, counts, hints */
+@utility text-muted {
+	@apply text-surface-700-300;
+}
