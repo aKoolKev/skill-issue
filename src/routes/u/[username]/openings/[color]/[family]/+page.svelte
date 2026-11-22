@@ -5,7 +5,10 @@
 	import { player } from '$lib/player.svelte';
 	import { findFamily, isColor } from '$lib/family';
 	import { linesToKnow, type LineStats } from '$lib/openings';
-	import { numbered } from '$lib/games';
+	import { numbered, pointsVsExpected, signed } from '$lib/games';
+	import { readLocal } from '$lib/storage';
+	import { lineKey } from '$lib/daily';
+	import { TOP_BOX } from '$lib/review';
 	import RecordBar from '$lib/components/RecordBar.svelte';
 
 	// One opening family as one color: the lines the player has reached, then the main
@@ -15,7 +18,14 @@
 		findFamily(player.book, player.openings, color, page.params.family ?? '')
 	);
 	const lines = $derived(player.book && family ? linesToKnow(player.book, family) : []);
-	const played = $derived(lines.filter((l) => l.games.length));
+	const cost = (stats: LineStats) => pointsVsExpected(stats.games.map((g) => g.game));
+	// Same order as the openings list: by cost if that's what the player picked there
+	const byCost = readLocal<string>('openings-sort', 'played') === 'cost';
+	const played = $derived.by(() => {
+		const list = lines.filter((l) => l.games.length);
+		return byCost ? list.sort((a, b) => cost(a) - cost(b)) : list;
+	});
+	const practiced = (stats: LineStats) => player.linesProgress[lineKey(color, stats.line.id)]?.box;
 	const unplayed = $derived(lines.filter((l) => !l.games.length && l.main));
 	const others = $derived(lines.filter((l) => !l.games.length && !l.main));
 
@@ -56,12 +66,28 @@
 				<div class="flex w-full flex-col gap-1 sm:w-40">
 					<p class="text-sm">
 						Played <strong>{stats.games.length}×</strong>
+						<span
+							class="text-xs {cost(stats) <= -0.5
+								? 'text-error-700-300'
+								: cost(stats) >= 0.5
+									? 'text-success-700-300'
+									: 'text-muted'}"
+							title="Points scored minus points expected from the ratings"
+							>{signed(cost(stats))}</span
+						>
 					</p>
 					<RecordBar games={stats.games.map((g) => g.game)} compact />
 				</div>
 			{/if}
 			<span class="btn self-start preset-tonal btn-sm sm:self-center">
-				<GraduationCap class="size-4" /> Learn
+				<GraduationCap class="size-4" />
+				{#if practiced(stats) === undefined}
+					Learn
+				{:else if (practiced(stats) ?? 0) >= TOP_BOX - 1}
+					Known
+				{:else}
+					Level {practiced(stats)}/{TOP_BOX}
+				{/if}
 			</span>
 		</a>
 	</li>

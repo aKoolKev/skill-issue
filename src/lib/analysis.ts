@@ -28,10 +28,18 @@ export interface Card {
 	/** Winning chances before and after the blunder, 0–1, from the player's side */
 	before: number;
 	after: number;
+	/** 'missed-win': the opponent had just blundered and this move let it slip. Missing = 'blunder'. */
+	kind?: 'blunder' | 'missed-win';
+	/** The opponent's best reply to the move played and the line after it (SAN) */
+	refutation?: string[];
 }
 
 /** A drop in winning chances this big (on 0–1) is a blunder: Lichess uses the same cutoff */
 export const BLUNDER_DROP = 0.15;
+/** Right after an opponent's blunder, giving back this much counts as a missed win */
+export const MISSED_DROP = 0.1;
+/** ...as long as the opponent's blunder left you at least this well off */
+const MISSED_FROM = 0.6;
 
 /** Deep enough to catch tactical blunders, quick enough to get through a game in seconds */
 const LIMITS: SearchLimits = { depth: 12, movetime: 400 };
@@ -98,9 +106,16 @@ export async function findBlunders(
 		const before = chances[ply];
 		const after = 1 - chances[ply + 1]; // the next position is from the opponent's side
 		const { fen, san, uci } = positions[ply];
-		if (before - after < BLUNDER_DROP || uci === evaluation.best) continue;
+		if (uci === evaluation.best) continue;
+		// Did the opponent's move just before this one throw away a lot?
+		const theirDrop = ply > 0 ? chances[ply - 1] - (1 - chances[ply]) : 0;
+		const missed =
+			theirDrop >= BLUNDER_DROP && before >= MISSED_FROM && before - after >= MISSED_DROP;
+		if (before - after < BLUNDER_DROP && !missed) continue;
 		const line = uciToSan(fen, evaluation.pv.length ? evaluation.pv : [evaluation.best]);
 		if (!line.length) continue;
+		const reply = evals[ply + 1];
+		const refutation = reply?.pv.length ? uciToSan(fens[ply + 1], reply.pv) : [];
 		cards.push({
 			id: `${game.id}#${ply}`,
 			gameId: game.id,
@@ -117,7 +132,9 @@ export async function findBlunders(
 			bestUci: evaluation.best,
 			line,
 			before,
-			after
+			after,
+			kind: missed ? 'missed-win' : 'blunder',
+			refutation
 		});
 	}
 	return cards;

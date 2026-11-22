@@ -17,7 +17,18 @@
 
 	// A lesson for one opening line. Walk through: step the moves back and forth.
 	// Practice: play your side's moves from memory; the other side answers by itself.
-	let { line, color }: { line: Line; color: Color } = $props();
+	let {
+		line,
+		color,
+		startMode = 'walk',
+		onfinish
+	}: {
+		line: Line;
+		color: Color;
+		startMode?: 'walk' | 'practice';
+		/** Called once each time a practice run reaches the end of the line */
+		onfinish?: (mistakes: number) => void;
+	} = $props();
 
 	/** Every position of the line (fens[i] = after i moves) and each move's squares and UCI */
 	const steps = $derived.by(() => {
@@ -37,7 +48,7 @@
 	});
 	const total = $derived(line.moves.length);
 
-	let mode = $state<'walk' | 'practice'>('walk');
+	let mode = $state<'walk' | 'practice'>(untrack(() => startMode));
 	let ply = $state(0);
 
 	// Practice state
@@ -47,6 +58,7 @@
 	let feedback = $state<{ kind: 'right' | 'wrong'; text: string } | null>(null);
 	let revision = $state(0);
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	let reported = false;
 
 	/** Whose move it is at a ply: White on even plies */
 	const turnAt = (p: number): Color => (p % 2 === 0 ? 'white' : 'black');
@@ -68,6 +80,7 @@
 	}
 
 	function startPractice() {
+		reported = false;
 		ply = 0;
 		mistakes = 0;
 		triesHere = 0;
@@ -110,6 +123,14 @@
 				ply = 0;
 			});
 		return () => clearTimeout(timer);
+	});
+
+	// Tell the parent once when a practice run is finished
+	$effect(() => {
+		if (mode === 'practice' && done && !reported) {
+			reported = true;
+			untrack(() => onfinish?.(mistakes));
+		}
 	});
 
 	function onkeydown(event: KeyboardEvent) {

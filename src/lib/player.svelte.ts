@@ -9,12 +9,13 @@ import {
 	type Profile,
 	type Ratings
 } from './chesscom';
-import { toGame, type Game } from './games';
+import { toGame, type Color, type Game } from './games';
 import { classifyAll, families, loadBook, type Book } from './openings';
 import { Engine } from './engine';
 import { engineCount, findBlunders, type Card } from './analysis';
 import { grade, type Progress } from './review';
 import { load, remove, save } from './storage';
+import { extendStreak, lineKey, type Streak } from './daily';
 
 /** How far back to look, and the most games to keep */
 const MONTHS = 6;
@@ -68,6 +69,10 @@ class Player {
 	cards = $state.raw<Card[]>([]);
 	analyzed = $state.raw<Record<string, number>>({});
 	progress = $state.raw<Progress>({});
+	/** Practice progress for opening lines, keyed by lineKey(color, id) */
+	linesProgress = $state.raw<Progress>({});
+	/** Days in a row with a finished daily session */
+	streak = $state.raw<Streak | undefined>(undefined);
 	/** The blunder search in progress, if any */
 	job = $state<{ total: number; done: number } | null>(null);
 	private abort: AbortController | null = null;
@@ -84,6 +89,8 @@ class Player {
 		this.cards = [];
 		this.analyzed = {};
 		this.progress = {};
+		this.linesProgress = {};
+		this.streak = undefined;
 		this.error = '';
 		this.status = 'loading';
 		loadBook().then((book) => (this.book = book));
@@ -95,15 +102,19 @@ class Player {
 			if (!stillCurrent()) return;
 			this.profile = profile;
 
-			const [blunders, progress, ratings] = await Promise.all([
+			const [blunders, progress, linesProgress, streak, ratings] = await Promise.all([
 				load<SavedBlunders>(`blunders:${key}`),
 				load<Progress>(`progress:${key}`),
+				load<Progress>(`lines:${key}`),
+				load<Streak>(`streak:${key}`),
 				getRatings(key).catch(() => ({}))
 			]);
 			if (!stillCurrent()) return;
 			this.cards = blunders?.cards ?? [];
 			this.analyzed = blunders?.analyzed ?? {};
 			this.progress = progress ?? {};
+			this.linesProgress = linesProgress ?? {};
+			this.streak = streak;
 			this.ratings = ratings;
 
 			// Newest months first, one request at a time (chess.com asks for no parallel calls)
@@ -196,6 +207,19 @@ class Player {
 	answer(card: Card, right: boolean) {
 		this.progress = { ...this.progress, [card.id]: grade(this.progress[card.id], right) };
 		save(`progress:${this.username}`, this.progress);
+	}
+
+	/** Records a practice run of an opening line: right means no mistakes */
+	answerLine(color: Color, lineId: number, right: boolean) {
+		const key = lineKey(color, lineId);
+		this.linesProgress = { ...this.linesProgress, [key]: grade(this.linesProgress[key], right) };
+		save(`lines:${this.username}`, this.linesProgress);
+	}
+
+	/** Marks today's daily session as done */
+	finishDay() {
+		this.streak = extendStreak(this.streak);
+		save(`streak:${this.username}`, this.streak);
 	}
 
 	/** Forgets this player's cards and progress on this device */
