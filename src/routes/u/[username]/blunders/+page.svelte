@@ -2,12 +2,27 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { Progress, SegmentedControl } from '@skeletonlabs/skeleton-svelte';
-	import { Cpu, Eye, Play, Square, Trash2 } from '@lucide/svelte';
+	import { Cpu, Eye, Play, Square, Trash2, X } from '@lucide/svelte';
 	import { player } from '$lib/player.svelte';
 	import { shortDate } from '$lib/games';
 	import { dueCount, knownCount } from '$lib/review';
 	import type { Card } from '$lib/analysis';
 	import Board from '$lib/components/Board.svelte';
+	import ShareCard from '$lib/components/ShareCard.svelte';
+	import { explain } from '$lib/explain';
+	import {
+		ALL_CARDS,
+		blunderType,
+		byPhase,
+		byType,
+		countBy,
+		gamePhase,
+		isMissedWin,
+		MISSED_WINS,
+		PHASES,
+		TYPES,
+		type CardFilter
+	} from '$lib/tactics';
 
 	// Find blunders with the engine, then see them as cards and start a review
 	let which = $state<'losses' | 'all'>('losses');
@@ -21,7 +36,21 @@
 	);
 	const toAnalyze = $derived(pending.slice(0, Number(howMany)));
 	const analyzedCount = $derived(Object.keys(player.analyzed).length);
-	const due = $derived(dueCount(player.cards, player.progress));
+	// What kinds of mistakes keep coming back, and a filter to look at just one kind
+	let filter = $state<CardFilter>(ALL_CARDS);
+	const types = $derived(countBy(player.cards, blunderType));
+	const phases = $derived(countBy(player.cards, gamePhase));
+	const missedWins = $derived(player.cards.filter(isMissedWin).length);
+	const topType = $derived(types.find(([type]) => type !== 'positional') ?? types[0]);
+	const filtered = $derived(player.cards.filter(filter.test));
+	const pick = (next: CardFilter) => (filter = filter.query === next.query ? ALL_CARDS : next);
+	const reviewHref = $derived(
+		resolve('/u/[username]/review', { username: page.params.username ?? '' }) +
+			(filter.query ? `?${filter.query}` : '')
+	);
+	const share = (n: number) => `${(n / Math.max(1, player.cards.length)) * 100}%`;
+
+	const due = $derived(dueCount(filtered, player.progress));
 	const known = $derived(knownCount(player.cards, player.progress));
 
 	let shown = $state(12);
@@ -50,16 +79,100 @@
 			</div>
 		</dl>
 		{#if player.cards.length}
-			<a
-				href={resolve('/u/[username]/review', { username: page.params.username ?? '' })}
-				class="btn preset-filled-primary-500 btn-lg"
-				aria-disabled={!due}
-			>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved, plus a query -->
+			<a href={reviewHref} class="btn preset-filled-primary-500 btn-lg" aria-disabled={!due}>
 				<Play class="size-5" />
-				{due ? `Review ${Math.min(due, 20)} cards` : 'All caught up'}
+				{#if !due}
+					All caught up
+				{:else if filter.query}
+					Drill {Math.min(due, 20)} {filter.label.toLowerCase()}
+				{:else}
+					Review {Math.min(due, 20)} cards
+				{/if}
 			</a>
 		{/if}
 	</div>
+
+	<!-- Patterns: which kinds of mistakes, and when in the game -->
+	{#if player.cards.length}
+		<div class="flex flex-col gap-4 card preset-filled-surface-100-900 p-4">
+			<div class="flex flex-col gap-1">
+				<h2 class="h5">Your patterns</h2>
+				{#if topType}
+					<p class="text-sm">
+						Your most common mistake: <strong>{TYPES[topType[0]].plural}</strong>
+						({topType[1]} of {player.cards.length}). Tap a row to see and drill just those.
+					</p>
+				{/if}
+			</div>
+			<div class="grid gap-6 md:grid-cols-2">
+				<ul class="flex flex-col gap-1">
+					{#each types as [type, count] (type)}
+						{@const f = byType(type)}
+						<li>
+							<button
+								type="button"
+								class="grid w-full grid-cols-[8rem_1fr_2rem] items-center gap-3 rounded-base px-2 py-1 text-left text-sm hover:preset-tonal {filter.query ===
+								f.query
+									? 'preset-tonal-primary'
+									: ''}"
+								aria-pressed={filter.query === f.query}
+								title={TYPES[type].about}
+								onclick={() => pick(f)}
+							>
+								<span>{TYPES[type].label}</span>
+								<span class="h-2 overflow-hidden rounded-full bg-surface-200-800">
+									<span class="block h-full bg-warning-500" style:width={share(count)}></span>
+								</span>
+								<span class="text-right tabular-nums">{count}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+				<div class="flex flex-col gap-3">
+					<p class="text-xs font-semibold text-muted uppercase">When they happen</p>
+					<div class="flex flex-wrap gap-2">
+						{#each Object.keys(PHASES) as phase (phase)}
+							{@const f = byPhase(phase as keyof typeof PHASES)}
+							{@const count = phases.find(([p]) => p === phase)?.[1] ?? 0}
+							<button
+								type="button"
+								class="flex flex-1 flex-col items-start rounded-base border border-surface-200-800 px-3 py-2 text-left hover:preset-tonal {filter.query ===
+								f.query
+									? 'preset-tonal-primary'
+									: ''}"
+								aria-pressed={filter.query === f.query}
+								onclick={() => pick(f)}
+							>
+								<span class="text-xs text-muted">{f.label}</span>
+								<span class="text-xl font-bold"
+									>{Math.round((count / player.cards.length) * 100)}%</span
+								>
+								<span class="text-xs text-muted">{count} cards</span>
+							</button>
+						{/each}
+					</div>
+					<button
+						type="button"
+						class="flex items-center justify-between rounded-base border border-surface-200-800 px-3 py-2 text-left text-sm hover:preset-tonal {filter.query ===
+						MISSED_WINS.query
+							? 'preset-tonal-primary'
+							: ''}"
+						aria-pressed={filter.query === MISSED_WINS.query}
+						onclick={() => pick(MISSED_WINS)}
+					>
+						<span>
+							<strong>Missed wins</strong>
+							<span class="block text-xs text-muted"
+								>Your opponent blundered and you let them off the hook</span
+							>
+						</span>
+						<span class="text-xl font-bold">{missedWins}</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Running the engine -->
 	<div class="flex flex-col gap-4 card border border-surface-200-800 p-4">
@@ -70,6 +183,8 @@
 				<p class="text-sm text-muted">
 					Stockfish runs in your browser and checks every move. Each game takes about 5–20 seconds.
 					Keep this tab open; cards appear as each game finishes. {analyzedCount} games checked so far.
+					Missed wins come from games checked after they were added: clear and re-check to find them in
+					older games.
 				</p>
 			</div>
 		</div>
@@ -144,7 +259,19 @@
 	{#if player.cards.length}
 		<div class="flex flex-col gap-3">
 			<div class="flex items-center justify-between gap-3">
-				<h2 class="h5">Your blunders</h2>
+				<h2 class="flex flex-wrap items-center gap-2 h5">
+					Your blunders
+					{#if filter.query}
+						<button
+							type="button"
+							class="chip preset-tonal-primary text-xs"
+							onclick={() => pick(filter)}
+						>
+							{filter.label} · {filtered.length}
+							<X class="size-3" />
+						</button>
+					{/if}
+				</h2>
 				<button
 					type="button"
 					class="btn btn-sm hover:preset-tonal"
@@ -157,7 +284,7 @@
 				</button>
 			</div>
 			<ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				{#each player.cards.slice(0, shown) as card (card.id)}
+				{#each filtered.slice(0, shown) as card (card.id)}
 					<li class="flex flex-col gap-3 card preset-filled-surface-100-900 p-3">
 						<Board
 							fen={card.fen}
@@ -170,6 +297,15 @@
 								: [{ ...squares(card.playedUci), color: 'red' }]}
 						/>
 						<div class="flex flex-col gap-1 text-sm">
+							<div class="flex flex-wrap gap-1.5">
+								<span class="chip preset-tonal-warning text-xs"
+									>{TYPES[blunderType(card)].label}</span
+								>
+								<span class="chip preset-tonal text-xs">{PHASES[gamePhase(card)]}</span>
+								{#if isMissedWin(card)}
+									<span class="chip preset-tonal-primary text-xs">Missed win</span>
+								{/if}
+							</div>
 							<p class="text-muted">
 								Move {card.moveNumber} vs {card.opponent} ·
 								<span class="capitalize">{card.timeClass}</span>
@@ -180,19 +316,26 @@
 								{pct(card.before)} → {pct(card.after)}
 							</p>
 							{#if revealed[card.id]}
+								{@const why = explain(card)}
+								{#if why.played}<p class="text-muted">{why.played}</p>{/if}
 								<p>
 									Best was <strong class="font-mono text-success-700-300">{card.best}</strong>
 									<span class="font-mono text-xs text-muted">{card.line.slice(1).join(' ')}</span>
 								</p>
-							{:else}
-								<button
-									type="button"
-									class="btn self-start btn-sm hover:preset-tonal"
-									onclick={() => (revealed = { ...revealed, [card.id]: true })}
-								>
-									<Eye class="size-4" /> Show best move
-								</button>
+								<p class="text-muted">{why.best}</p>
 							{/if}
+							<div class="flex flex-wrap gap-1">
+								{#if !revealed[card.id]}
+									<button
+										type="button"
+										class="btn btn-sm hover:preset-tonal"
+										onclick={() => (revealed = { ...revealed, [card.id]: true })}
+									>
+										<Eye class="size-4" /> Show best move
+									</button>
+								{/if}
+								<ShareCard {card} />
+							</div>
 							{#if boxOf(card) !== undefined}
 								<p class="text-xs text-muted">Learning level {boxOf(card)} of 5</p>
 							{/if}
@@ -200,9 +343,9 @@
 					</li>
 				{/each}
 			</ul>
-			{#if shown < player.cards.length}
+			{#if shown < filtered.length}
 				<button type="button" class="btn self-center preset-tonal" onclick={() => (shown += 12)}>
-					Show more ({player.cards.length - shown} left)
+					Show more ({filtered.length - shown} left)
 				</button>
 			{/if}
 		</div>

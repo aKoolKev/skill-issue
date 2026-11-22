@@ -2,7 +2,16 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { Avatar } from '@skeletonlabs/skeleton-svelte';
-	import { BookOpen, ExternalLink, Layers, LoaderCircle, RotateCw } from '@lucide/svelte';
+	import {
+		BookOpen,
+		CalendarCheck,
+		ExternalLink,
+		Flame,
+		Layers,
+		LoaderCircle,
+		RotateCw
+	} from '@lucide/svelte';
+	import { currentStreak } from '$lib/daily';
 	import { player } from '$lib/player.svelte';
 	import SearchForm from '$lib/components/SearchForm.svelte';
 
@@ -13,12 +22,19 @@
 		player.open(username);
 	});
 
+	const streak = $derived(currentStreak(player.streak));
 	const tabs = $derived([
+		{
+			label: 'Today',
+			href: resolve('/u/[username]/today', { username }),
+			icon: CalendarCheck,
+			active: /\/today/.test(page.url.pathname)
+		},
 		{
 			label: 'Openings',
 			href: resolve('/u/[username]', { username }),
 			icon: BookOpen,
-			active: !/\/(blunders|review)/.test(page.url.pathname)
+			active: !/\/(blunders|review|today)/.test(page.url.pathname)
 		},
 		{
 			label: 'Blunders',
@@ -89,6 +105,12 @@
 							<span class="badge preset-tonal capitalize">{kind} {player.ratings[kind]}</span>
 						{/if}
 					{/each}
+					{#if streak}
+						<span class="badge flex items-center gap-1 preset-tonal-warning">
+							<Flame class="size-3.5" />
+							{streak}-day streak
+						</span>
+					{/if}
 				</div>
 			</div>
 			<p class="flex w-full items-center gap-2 text-sm text-muted sm:w-auto" aria-live="polite">
