@@ -22,9 +22,6 @@
 					Skill Issue
 				</a>
 			</AppBar.Lead>
-			<AppBar.Trail>
-				<span class="hidden text-sm text-muted sm:inline">Blunders → flashcards</span>
-			</AppBar.Trail>
 		</AppBar.Toolbar>
 	</AppBar>
 
