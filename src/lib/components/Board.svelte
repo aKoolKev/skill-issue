@@ -26,7 +26,7 @@
 		movable?: Color;
 		/** Squares to highlight as the last move, like ["e2", "e4"] */
 		lastMove?: [string, string];
-		/** Arrows: green for good moves, red for mistakes */
+		/** Arrows: green for good moves, red for mistakes. from = to draws a circle. */
 		arrows?: { from: string; to: string; color: 'green' | 'red' | 'blue' }[];
 		onmove?: (uci: string) => void;
 		/** Bump to redraw from `fen` even when it hasn't changed (e.g. to take back a wrong move) */
@@ -58,7 +58,8 @@
 		const canMove = Boolean(chess && movable && movable === turn);
 		const shapes: DrawShape[] = arrows.map((arrow) => ({
 			orig: arrow.from as Key,
-			dest: arrow.to as Key,
+			// Same square at both ends: a circle instead of an arrow
+			dest: arrow.to === arrow.from ? undefined : (arrow.to as Key),
 			brush: arrow.color
 		}));
 		return {

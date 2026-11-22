@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
 	import { resolve } from '$app/paths';
+	import { Library } from '@lucide/svelte';
 
 	let { children } = $props();
 </script>
@@ -22,6 +23,11 @@
 					Skill Issue
 				</a>
 			</AppBar.Lead>
+			<AppBar.Trail>
+				<a href={resolve('/library')} class="btn btn-sm hover:preset-tonal">
+					<Library class="size-4" /> Library
+				</a>
+			</AppBar.Trail>
 		</AppBar.Toolbar>
 	</AppBar>
 

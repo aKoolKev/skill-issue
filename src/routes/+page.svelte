@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import {
 		BookOpen,
 		CalendarCheck,
 		ChartPie,
 		Cpu,
 		Layers,
+		Library,
 		Lock,
 		Search,
 		Target,
@@ -12,6 +14,7 @@
 		Zap
 	} from '@lucide/svelte';
 	import SearchForm from '$lib/components/SearchForm.svelte';
+	import { CONCEPTS } from '$lib/data/library';
 
 	const steps = [
 		{
@@ -120,6 +123,21 @@
 			{/each}
 		</ul>
 	</section>
+
+	<!-- The library: no username needed -->
+	<a
+		href={resolve('/library')}
+		class="flex flex-col gap-2 card border border-surface-200-800 p-5 transition-colors hover:preset-tonal sm:flex-row sm:items-center sm:gap-4"
+	>
+		<Library class="size-6 shrink-0 text-primary-600-400" />
+		<div class="flex flex-col gap-1">
+			<h2 class="h5">The library</h2>
+			<p class="text-sm text-muted">
+				Forks, pins, back-rank mates, outposts, the Lucena position: {CONCEPTS.length} ideas every player
+				should know, with examples, puzzles and a quiz. No username needed.
+			</p>
+		</div>
+	</a>
 
 	<!-- Trust -->
 	<section
