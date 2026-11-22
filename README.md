@@ -5,7 +5,11 @@ It's not bad luck. It's a skill issue.
 Search any chess.com player and get:
 
 - **Blunder flashcards.** Stockfish checks their games right in the browser and finds the moves that threw the game. Each blunder becomes a card: the position before it, and you find the move that should have been played. Cards you miss come back sooner (spaced repetition, like Quizlet's Learn mode).
+- **Blunder patterns.** Each card is tagged by kind (hung piece, allowed fork, missed tactic, missed or allowed mate, positional) and by phase (opening, middlegame, endgame), so you can see which mistake keeps coming back and drill just those.
+- **Missed wins.** Cards for the times the opponent blundered and the player didn't punish it.
 - **Opening lessons.** Every opening they play, as White and as Black, with their record in each line. Each line has a lesson: step through it move by move, then practice playing your side from memory. It also shows how the line went in their own games and what came next.
+- **Openings that cost you.** Openings and lines ranked by points scored against what the ratings predicted (Elo expected score), with the worst three called out as "fix these first".
+- **Daily session.** A short session that mixes due cards with the costliest opening lines, with a day streak.
 
 No sign-in and no server: everything runs in the browser and is saved on that device.
 

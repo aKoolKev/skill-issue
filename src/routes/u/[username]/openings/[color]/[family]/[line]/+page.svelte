@@ -49,7 +49,11 @@
 			<h2 class="h3">{line.variation}</h2>
 		</header>
 
-		<LessonPlayer {line} {color} />
+		<LessonPlayer
+			{line}
+			{color}
+			onfinish={(mistakes) => player.answerLine(color, line.id, mistakes === 0)}
+		/>
 
 		<!-- How this line has gone in the player's games -->
 		<div class="flex flex-col gap-3 card preset-filled-surface-100-900 p-4">

@@ -95,3 +95,19 @@ export const moveNumber = (ply: number) => Math.floor(ply / 2) + 1;
 /** A move with its number, like "12. Nf3" or "12... Nf6" */
 export const numbered = (ply: number, san: string) =>
 	`${moveNumber(ply)}${ply % 2 === 0 ? '.' : '...'} ${san}`;
+
+const POINTS: Record<Result, number> = { win: 1, draw: 0.5, loss: 0 };
+
+/** The score a player is expected to get against this opponent, 0–1, from the Elo formula */
+export const expectedScore = (game: Game) =>
+	1 / (1 + 10 ** ((game.opponent.rating - game.rating) / 400));
+
+/**
+ * Points scored minus points expected from the ratings, over these games. Negative means the
+ * player is losing points they should have won: a way to rank openings by what they cost.
+ */
+export const pointsVsExpected = (games: Game[]) =>
+	games.reduce((sum, game) => sum + POINTS[game.result] - expectedScore(game), 0);
+
+/** "+1.2" or "−3.4" (a real minus sign) */
+export const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`;
