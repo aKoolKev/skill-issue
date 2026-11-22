@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { BookOpen, Layers } from '@lucide/svelte';
+	import { resolve } from '$app/paths';
+	import { BookOpen, Layers, Library } from '@lucide/svelte';
 	import SearchForm from '$lib/components/SearchForm.svelte';
+	import { CONCEPTS } from '$lib/data/library';
 </script>
 
 <main class="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:py-16">
@@ -34,5 +36,16 @@
 				move, then practice them until you can play them from memory.
 			</p>
 		</article>
+		<a
+			href={resolve('/library')}
+			class="flex flex-col gap-2 card border border-surface-200-800 p-5 transition-colors hover:preset-tonal sm:col-span-2"
+		>
+			<Library class="size-6 text-primary-600-400" />
+			<h2 class="h5">The library</h2>
+			<p class="text-sm text-muted">
+				Forks, pins, back-rank mates, outposts, the Lucena position: {CONCEPTS.length} ideas every player
+				should know, with examples, puzzles and a quiz. No username needed.
+			</p>
+		</a>
 	</section>
 </main>

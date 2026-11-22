@@ -13,6 +13,7 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"openings": "node scripts/build-openings.js",
+		"library:check": "node scripts/check-library.ts",
 		"postinstall": "node scripts/copy-engine.js"
 	},
 	"dependencies": {
